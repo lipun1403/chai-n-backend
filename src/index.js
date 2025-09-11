@@ -3,7 +3,9 @@
 // import { DB_NAME } from "./constants";
 
 // method 2
-import connectDB from "./db/index.js";
+// import express from "express";
+import { app } from "./app.js"
+import { connectDB } from "./db/index.js";
 import dotenv from "dotenv"
 // when use import for dotenv, use -r dotenv/config --experimental-json-modules in scripts/dev in package.json
 dotenv.config({
