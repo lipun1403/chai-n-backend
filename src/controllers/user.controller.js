@@ -29,7 +29,15 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // handle images
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverimage?.[0]?.path;
+
+    // less robust way to check for cover image
+    // const coverImageLocalPath = req.files?.coverimage?.[0]?.path;
+
+    // more robust way to check for cover image
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
 
     // avatar is required
     if (!avatarLocalPath) {
@@ -70,4 +78,4 @@ const registerUser = asyncHandler(async (req, res) => {
 
 });
 
-export { registerUser };
+export { registerUser }; 
