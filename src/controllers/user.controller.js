@@ -18,6 +18,7 @@ const generateAccessAndRefreshTokens = async (userID) => {
     }
 }
 
+// User registration
 const registerUser = asyncHandler(async (req, res) => {
     // Registration logic here
     // -> get user details from frontend
@@ -92,6 +93,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
 });
 
+// User login
 const loginUser = asyncHandler(async (req, res) => {
     // Login logic here
     // username or email
@@ -377,6 +379,149 @@ const updateUserCoverImage = asyncHandler(async (req,res) => {
     );
 });
 
+// get user channel details
+const getUserChannelDetail = asyncHandler(async (req,res) => {
+    const {username} = req.params;
+
+    if(!username?.trim()) {
+        throw new ApiError(400, "username not found");
+    }
+
+    // pipelining for fetching channel details
+    const channel = await User.aggregate([
+        { // match stage
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+        { // lookup stage for joining subscribers
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        { // lookup stage for joining subscribed channels
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        { // add fields stage for counting subscribers and subscriptions
+            $addFields: {
+                subscribersCount: {
+                    $size: "$subscribers"
+                },
+                channelsSubscribedToCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond: { // check if user is subscribed to channel
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        { // project stage to include only necessary fields
+            $project: {
+                fullName: 1,
+                email: 1,
+                username: 1,
+                avatar: 1,
+                coverImage: 1,
+                subscribersCount: 1,
+                channelsSubscribedToCount: 1,
+                isSubscribed: 1
+            }
+        }
+    ])
+
+    if(!channel?.length) { // check if channel exists
+        throw new ApiError(400, "Channel does not exists");
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            channel[0], 
+            "Channel details fetched successfully"
+        )
+    )
+})
+
+// get user watch history
+const getWatchHistory = asyncHandler( async (req,res) => {
+    const user = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user._id) // req.user._id is not the original id, we need to find the corresponding ObjectId, this line finds the related objectid
+            }
+        },
+        {   // lookup stage for joining videos with watch history
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [ // pipeline for fetching video details
+                    {
+                        $lookup: { // lookup stage for joining video owner details
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [ // pipeline for fetching video owner details
+                                {
+                                    $project: { // project stage to include only necessary fields
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    { // add fields stage for restructuring owner details
+                        $addFields: {
+                            owner: {
+                                $arrayElemAt: ["$owner", 0] // or we can use $first: "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return user
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].watchHistory,
+            "Watch history fetched successfully"
+        )
+    )
+});
 
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateAvatar, updateUserCoverImage };
+export { 
+    registerUser, 
+    loginUser, 
+    logoutUser, 
+    refreshAccessToken, 
+    changeCurrentPassword, 
+    getCurrentUser, 
+    updateAccountDetails, 
+    updateAvatar, 
+    updateUserCoverImage, 
+    getUserChannelDetail,
+    getWatchHistory
+};
