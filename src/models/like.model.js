@@ -17,6 +17,7 @@ const likeSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User"
     }
-})
+});
+
 
 export const Like = mongoose.model("Like",likeSchema)
