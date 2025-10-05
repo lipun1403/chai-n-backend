@@ -143,16 +143,16 @@ const toggleTweetLike = asyncHandler ( async (req,res) => {
 
 // get liked videos
 const getLikedVideos = asyncHandler( async (req,res) => {
-    const person = req.user;
+    const person = req.user?._id;
 
-    if(!isValidObjectId(person._id)) {
+    if(!isValidObjectId(person)) {
         throw new ApiError(404, "user not found");
     }
 
     const videos = await Like.aggregate([
         {
             $match: {
-                likedBy: person._id
+                likedBy: mongoose.Types.ObjectId(person)
             }
         },
         {

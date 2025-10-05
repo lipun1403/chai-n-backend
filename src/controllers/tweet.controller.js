@@ -49,7 +49,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
     const tweets = await Tweet.aggregate([
         {
             $match: {
-                owner: userId
+                owner: mongoose.Types.ObjectId(userId)
             }
         },
         {
